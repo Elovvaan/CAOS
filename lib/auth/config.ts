@@ -1,6 +1,5 @@
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import type { NextAuthConfig } from "next-auth";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
@@ -9,50 +8,43 @@ const signInSchema = z.object({
   password: z.string().min(6),
 });
 
-export const authConfig = {
-  trustHost: true,
-  pages: {
-    signIn: "/sign-in",
+export const credentialsProvider = Credentials({
+  credentials: {
+    email: { label: "Email", type: "email" },
+    password: { label: "Password", type: "password" },
   },
-  providers: [
-    Credentials({
-      credentials: {
-        email: {},
-        password: {},
-      },
-      authorize: async (credentials) => {
-        const parsed = signInSchema.safeParse(credentials);
-        if (!parsed.success) return null;
+  authorize: async (credentials) => {
+    const parsed = signInSchema.safeParse(credentials);
+    if (!parsed.success) return null;
 
-        const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
-        if (!user) return null;
+    const email = parsed.data.email.trim().toLowerCase();
+    const password = parsed.data.password;
 
-        const ok = await compare(parsed.data.password, user.passwordHash);
-        if (!ok) return null;
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          passwordHash: true,
+          role: true,
+        },
+      });
 
-        return { id: user.id, email: user.email, name: user.name, role: user.role };
-      },
-    }),
-  ],
-  callbacks: {
-    jwt: async ({ token, user }) => {
-      if (user) {
-        token.id = user.id as string;
-        token.role = user.role;
-      }
-      return token;
-    },
-    session: async ({ session, token }) => {
-      if (session.user) {
-        if (typeof token.id === "string") {
-          session.user.id = token.id;
-        }
+      if (!user) return null;
 
-        if (token.role === "STUDENT" || token.role === "ADMIN") {
-          session.user.role = token.role;
-        }
-      }
-      return session;
-    },
+      const valid = await compare(password, user.passwordHash);
+      if (!valid) return null;
+
+      return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      };
+    } catch {
+      return null;
+    }
   },
-} satisfies NextAuthConfig;
+});
