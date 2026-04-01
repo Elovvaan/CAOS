@@ -29,6 +29,11 @@ It intentionally omits advanced RW orchestration, agent pipelines, design/video 
    ```bash
    npm install
    ```
+   - For production-only installs, prefer:
+     ```bash
+     npm install --omit=dev
+     ```
+     (Use this instead of `npm config set production true` or `--production`, which now emits an npm warning.)
 2. Copy env values:
    ```bash
    cp .env.example .env
