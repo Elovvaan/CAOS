@@ -43,8 +43,13 @@ export const authConfig = {
     },
     session: async ({ session, token }) => {
       if (session.user) {
-        session.user.id = token.id;
-        session.user.role = token.role;
+        if (typeof token.id === "string") {
+          session.user.id = token.id;
+        }
+
+        if (token.role === "STUDENT" || token.role === "ADMIN") {
+          session.user.role = token.role;
+        }
       }
       return session;
     },
