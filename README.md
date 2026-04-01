@@ -69,6 +69,8 @@ Credentials provider is used in Phase 1 to keep setup simple.
 
 ## Deploy Notes (Vercel)
 
+
+- Set `AUTH_SECRET` (or `NEXTAUTH_SECRET` alias) to a long random value for NextAuth session encryption.
 - Provision Postgres-compatible database.
 - Configure env vars from `.env.example`.
 - Run Prisma migrate and seed in deployment workflow.
