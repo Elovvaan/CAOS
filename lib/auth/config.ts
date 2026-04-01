@@ -10,6 +10,7 @@ const signInSchema = z.object({
 });
 
 export const authConfig = {
+  trustHost: true,
   pages: {
     signIn: "/sign-in",
   },
