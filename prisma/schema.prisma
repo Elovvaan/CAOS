@@ -1,0 +1,178 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum PodDifficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
+enum PodStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum TaskExpectedMode {
+  FOUNDATION
+  GUIDED_AI
+}
+
+enum PodRunStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  SUBMITTED
+  COMPLETED
+}
+
+enum VerificationDecision {
+  ACCEPT
+  MODIFY
+  REJECT
+}
+
+enum ScoreCategory {
+  THINKING
+  SPECIFICATION
+  VERIFICATION
+}
+
+model User {
+  id           String      @id @default(cuid())
+  name         String
+  email        String      @unique
+  passwordHash String
+  image        String?
+  role         Role        @default(STUDENT)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  profile      Profile?
+  podRuns      PodRun[]
+  scoreEvents  ScoreEvent[]
+  userBadges   UserBadge[]
+}
+
+model Profile {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  level             Int      @default(1)
+  xp                Int      @default(0)
+  streak            Int      @default(0)
+  thinkingScore     Int      @default(0)
+  specScore         Int      @default(0)
+  verificationScore Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OutcomePod {
+  id                 String        @id @default(cuid())
+  slug               String        @unique
+  title              String
+  shortDescription   String
+  fullDescription    String
+  difficulty         PodDifficulty
+  estimatedMinutes   Int
+  status             PodStatus     @default(DRAFT)
+  learningObjectives Json
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  tasks              PodTask[]
+  podRuns            PodRun[]
+}
+
+model PodTask {
+  id            String           @id @default(cuid())
+  outcomePodId  String
+  title         String
+  prompt        String
+  instructions  String
+  position      Int
+  expectedMode  TaskExpectedMode @default(FOUNDATION)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  outcomePod    OutcomePod       @relation(fields: [outcomePodId], references: [id], onDelete: Cascade)
+  taskResponses TaskResponse[]
+
+  @@unique([outcomePodId, position])
+}
+
+model PodRun {
+  id          String       @id @default(cuid())
+  outcomePodId String
+  userId      String
+  status      PodRunStatus @default(NOT_STARTED)
+  startedAt   DateTime?
+  submittedAt DateTime?
+  completedAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  outcomePod  OutcomePod   @relation(fields: [outcomePodId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskResponses TaskResponse[]
+  scoreEvents ScoreEvent[]
+}
+
+model TaskResponse {
+  id                      String               @id @default(cuid())
+  podRunId                String
+  podTaskId               String
+  attemptText             String
+  reasoningText           String
+  goalText                String
+  constraintsText         String
+  definitionOfDoneText    String
+  aiOutputText            String?
+  verificationDecision    VerificationDecision?
+  verificationExplanation String?
+  finalAnswerText         String?
+  isComplete              Boolean              @default(false)
+  createdAt               DateTime             @default(now())
+  updatedAt               DateTime             @updatedAt
+  podRun                  PodRun               @relation(fields: [podRunId], references: [id], onDelete: Cascade)
+  podTask                 PodTask              @relation(fields: [podTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([podRunId, podTaskId])
+}
+
+model ScoreEvent {
+  id        String        @id @default(cuid())
+  userId    String
+  podRunId  String?
+  category  ScoreCategory
+  value     Int
+  reason    String
+  createdAt DateTime      @default(now())
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  podRun    PodRun?       @relation(fields: [podRunId], references: [id], onDelete: SetNull)
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String
+  createdAt   DateTime    @default(now())
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
